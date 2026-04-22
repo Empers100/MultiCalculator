@@ -1274,7 +1274,18 @@
                         formulaStr += ' ' + finalNum + ' =';
                         repeatOp = '^'; repeatOperand = exponent;
                         sciLastOp = ''; lastWasUnary = false;
+                    } else if (sciLastOp) {
+                        // Если есть активный бинарный оператор, используем sciCalculate
+                        var calcResult = sciCalculate(finalNum);
+                        if (!isNaN(calcResult)) {
+                            sciDisplay.value = formatNumber(calcResult);
+                            sciCurrent = calcResult;
+                            repeatOp = sciLastOp; repeatOperand = finalNum;
+                        }
+                        sciLastOp = '';
+                        formulaStr += ' ' + finalNum + ' =';
                     } else if (sciExpression) {
+                        // Нет оператора, но есть накопленное выражение (например, после унарных функций)
                         var exprFull = sciExpression + finalNum;
                         var resFull = evaluateSimple(exprFull);
                         if (isNaN(resFull)) {
@@ -1288,19 +1299,9 @@
                         repeatOp = sciLastOp; repeatOperand = finalNum;
                         sciLastOp = ''; lastWasUnary = false;
                     } else {
-                        if (sciLastOp) {
-                            var calcResult = sciCalculate(finalNum);
-                            if (!isNaN(calcResult)) {
-                                sciDisplay.value = formatNumber(calcResult);
-                                sciCurrent = calcResult;
-                                repeatOp = sciLastOp; repeatOperand = finalNum;
-                            }
-                            sciLastOp = '';
-                            formulaStr += ' ' + finalNum + ' =';
-                        } else {
-                            if (!lastWasUnary) { formulaStr += ' ='; } else { if (!formulaStr.includes('=')) formulaStr += ' ='; }
-                            repeatOp = null;
-                        }
+                        // Ни оператора, ни выражения (например, просто нажали = после числа)
+                        if (!lastWasUnary) { formulaStr += ' ='; } else { if (!formulaStr.includes('=')) formulaStr += ' ='; }
+                        repeatOp = null;
                     }
                     updateFormula(formulaStr);
                     sciStartNew = true; expectOperand = true;
