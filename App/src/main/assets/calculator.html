@@ -752,7 +752,10 @@
 
     // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
     function formatNumber(num) {
-        if (isNaN(num) || !isFinite(num)) return getErrorText();
+        if (isNaN(num)) return getErrorText();
+        if (!isFinite(num)) {
+            return num > 0 ? '∞' : '-∞';
+        }
         if (Number.isInteger(num)) return num.toString();
         const absNum = Math.abs(num);
         if (absNum < 1e-12 && absNum > 0) return num.toExponential(6).replace(/\.?0+e/, 'e');
@@ -898,8 +901,13 @@
     // УСИЛЕННАЯ ФУНКЦИЯ ВЫЧИСЛЕНИЯ ВЫРАЖЕНИЙ (поддерживает функции и ^)
     function evaluateSimple(expr){ 
         try {
+            // Убираем пробелы
             expr = expr.replace(/\s+/g, '');
+            
+            // Замена операторов калькулятора на JS
             expr = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/\^/g, '**');
+            
+            // Замена функций на Math
             expr = expr.replace(/sin\(/g, 'Math.sin(');
             expr = expr.replace(/cos\(/g, 'Math.cos(');
             expr = expr.replace(/tan\(/g, 'Math.tan(');
@@ -910,14 +918,19 @@
             expr = expr.replace(/ln\(/g, 'Math.log(');
             expr = expr.replace(/√\(/g, 'Math.sqrt(');
             expr = expr.replace(/fact\(/g, 'factorial(');
-            expr = expr.replace(/π/g, 'Math.PI');
-            expr = expr.replace(/e/g, 'Math.E');
+            
+            // Константы: заменяем только отдельные π и e, не внутри чисел (используем границы слова \b)
+            expr = expr.replace(/\bπ\b/g, 'Math.PI');
+            expr = expr.replace(/\be\b/g, 'Math.E');
+            
+            // Факториал
             const factorial = (n) => {
                 if (!Number.isInteger(n) || n < 0 || n > 170) throw new Error('Invalid factorial');
                 let f = 1;
                 for (let i = 2; i <= n; i++) f *= i;
                 return f;
             };
+            
             const func = new Function('Math', 'factorial', 'return (' + expr + ')');
             return func(Math, factorial);
         } catch(e) {
@@ -970,7 +983,7 @@
                     let parts = sciDisplay.value.split('E');
                     let exponent = parseFloat(parts[1]) || 0;
                     let result = Number(eeMantissa) * Math.pow(10, exponent);
-                    if (!isFinite(result)) {
+                    if (isNaN(result)) {
                         sciDisplay.value = getErrorText();
                         return;
                     }
@@ -1013,7 +1026,7 @@
                 let parts = sciDisplay.value.split('E');
                 let exponent = parseFloat(parts[1]) || 0;
                 let result = Number(eeMantissa) * Math.pow(10, exponent);
-                if (!isFinite(result)) {
+                if (isNaN(result)) {
                     sciDisplay.value = getErrorText();
                     eeActive = false;
                     return;
