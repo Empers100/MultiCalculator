@@ -751,7 +751,7 @@
             });
         });
 
-        // ---------- ОБЫЧНЫЙ КАЛЬКУЛЯТОР (С ФОРМУЛОЙ) ----------
+        // ========== ОБЫЧНЫЙ КАЛЬКУЛЯТОР (ВЕРХНИЙ ЭКРАН В СТИЛЕ WINDOWS) ==========
         const basicDisplay = document.getElementById('basicDisplay');
         const formulaDisplay = document.getElementById('formulaDisplay');
 
@@ -760,7 +760,11 @@
         let basicStart = true;
         let basicCurrent = 0;
         let basicPercentUsed = false;
-        let formulaStr = '';
+
+        // Переменные для формулы в стиле Windows
+        let formulaStr = '';          // накопленная часть выражения слева от текущего операнда
+        let curExpr = '0';           // текстовое представление текущего операнда (может быть обёрнуто функциями)
+        let lastWasEqual = false;    // флаг, что последней операцией было "="
 
         function updateFormula(text) {
             if (formulaDisplay) formulaDisplay.textContent = text || '';
@@ -771,7 +775,7 @@
                 case '+': basicResult += num; break;
                 case '-': basicResult -= num; break;
                 case '×': basicResult *= num; break;
-                case '÷': if(num===0){ basicDisplay.value = getErrorText(); formulaStr = ''; updateFormula(''); return; } basicResult /= num; break;
+                case '÷': if(num===0){ basicDisplay.value = getErrorText(); formulaStr = ''; curExpr = '0'; updateFormula(''); return; } basicResult /= num; break;
                 default: basicResult = num;
             }
             basicCurrent = basicResult;
@@ -781,98 +785,189 @@
         function handleBasic(text) {
             if (!basicDisplay) return;
             try {
+                // Если на дисплее ошибка и нажата не "C", сбрасываем ошибку
                 if (basicDisplay.value === getErrorText() && text !== 'C') {
-                    basicDisplay.value = '0'; basicCurrent = 0; basicStart = true;
-                    formulaStr = ''; updateFormula('');
+                    basicDisplay.value = '0';
+                    basicCurrent = 0;
+                    basicStart = true;
+                    formulaStr = '';
+                    curExpr = '0';
+                    updateFormula('');
                 }
+
+                // Обработка цифр и точки
+                if (text !== 'C' && text !== '⌫' && text !== '±' && text !== '√' && text !== '1/x' && text !== 'x²' && text !== 'x³' && text !== '%' && text !== '÷' && text !== '×' && text !== '-' && text !== '+' && text !== '=') {
+                    // Это цифра или точка
+                    if (lastWasEqual) {
+                        // Начинаем новое выражение
+                        formulaStr = '';
+                        curExpr = text;
+                        lastWasEqual = false;
+                        basicStart = false;
+                        basicDisplay.value = text;
+                        updateFormula(curExpr);
+                        basicCurrent = parseFloat(text) || 0;
+                        return;
+                    }
+                    if (basicStart || basicDisplay.value === '0') {
+                        basicDisplay.value = text;
+                        basicStart = false;
+                        curExpr = text;
+                    } else {
+                        if (text === '.' && basicDisplay.value.indexOf('.') !== -1) return;
+                        basicDisplay.value += text;
+                        curExpr += text;
+                    }
+                    basicCurrent = parseFloat(basicDisplay.value) || 0;
+                    updateFormula(formulaStr + curExpr);
+                    return;
+                }
+
+                // Сброс ошибки уже сделали выше, если нужно
 
                 switch (text) {
                     case 'C':
-                        basicDisplay.value='0'; basicResult=0; basicCurrent=0; basicLastOp='';
-                        basicStart=true; basicPercentUsed=false;
-                        formulaStr = ''; updateFormula('');
+                        basicDisplay.value = '0';
+                        basicResult = 0;
+                        basicCurrent = 0;
+                        basicLastOp = '';
+                        basicStart = true;
+                        basicPercentUsed = false;
+                        formulaStr = '';
+                        curExpr = '0';
+                        lastWasEqual = false;
+                        updateFormula('');
                         break;
+
                     case '⌫':
-                        var s = basicDisplay.value;
-                        basicDisplay.value = (s.length>1 && s!=='0') ? s.slice(0,-1) : '0';
-                        basicCurrent = parseFloat(basicDisplay.value)||0;
-                        formulaStr = formulaStr.slice(0, -1);
-                        updateFormula(formulaStr);
+                        let s = basicDisplay.value;
+                        if (s.length > 1 && s !== '0') {
+                            basicDisplay.value = s.slice(0, -1);
+                            curExpr = curExpr.slice(0, -1);
+                            if (curExpr === '' || curExpr === '-') curExpr = '0';
+                        } else {
+                            basicDisplay.value = '0';
+                            curExpr = '0';
+                        }
+                        basicCurrent = parseFloat(basicDisplay.value) || 0;
+                        updateFormula(formulaStr + curExpr);
                         break;
+
                     case '±':
                         basicCurrent = -basicCurrent;
                         basicDisplay.value = formatNumber(basicCurrent);
+                        curExpr = 'negate(' + curExpr + ')';
+                        basicStart = true; // после унарной операции можно вводить оператор
+                        updateFormula(formulaStr + curExpr);
                         break;
+
                     case '√':
-                        if(basicCurrent<0) basicDisplay.value = getErrorText();
-                        else { basicCurrent = Math.sqrt(basicCurrent); basicDisplay.value=formatNumber(basicCurrent); }
-                        basicStart=true;
-                        formulaStr = `√(${formulaStr || basicDisplay.value})`;
-                        updateFormula(formulaStr);
-                        break;
-                    case '1/x':
-                        if(basicCurrent===0) basicDisplay.value = getErrorText();
-                        else { basicCurrent = 1/basicCurrent; basicDisplay.value=formatNumber(basicCurrent); }
-                        basicStart=true;
-                        formulaStr = `1/(${formulaStr || basicDisplay.value})`;
-                        updateFormula(formulaStr);
-                        break;
-                    case 'x²':
-                        basicCurrent = basicCurrent**2;
-                        basicDisplay.value=formatNumber(basicCurrent);
-                        basicStart=true;
-                        formulaStr = `(${formulaStr || basicDisplay.value})²`;
-                        updateFormula(formulaStr);
-                        break;
-                    case 'x³':
-                        basicCurrent = basicCurrent**3;
-                        basicDisplay.value=formatNumber(basicCurrent);
-                        basicStart=true;
-                        formulaStr = `(${formulaStr || basicDisplay.value})³`;
-                        updateFormula(formulaStr);
-                        break;
-                    case '%':
-                        if(basicLastOp) basicCurrent = basicResult * basicCurrent / 100;
-                        else basicCurrent = basicCurrent/100;
-                        basicDisplay.value=formatNumber(basicCurrent);
-                        basicPercentUsed=true; basicStart=true;
-                        break;
-                    case '÷': case '×': case '-': case '+':
-                        if (!basicStart) {
-                            if(basicPercentUsed){ basicCalculate(basicCurrent); basicPercentUsed=false; }
-                            else basicCalculate(basicCurrent);
+                        if (basicCurrent < 0) {
+                            basicDisplay.value = getErrorText();
+                            formulaStr = ''; curExpr = '0'; updateFormula('');
+                        } else {
+                            basicCurrent = Math.sqrt(basicCurrent);
+                            basicDisplay.value = formatNumber(basicCurrent);
+                            curExpr = 'sqrt(' + curExpr + ')';
+                            basicStart = true;
+                            updateFormula(formulaStr + curExpr);
                         }
+                        break;
+
+                    case '1/x':
+                        if (basicCurrent === 0) {
+                            basicDisplay.value = getErrorText();
+                            formulaStr = ''; curExpr = '0'; updateFormula('');
+                        } else {
+                            basicCurrent = 1 / basicCurrent;
+                            basicDisplay.value = formatNumber(basicCurrent);
+                            curExpr = 'reciprocal(' + curExpr + ')';
+                            basicStart = true;
+                            updateFormula(formulaStr + curExpr);
+                        }
+                        break;
+
+                    case 'x²':
+                        basicCurrent = basicCurrent ** 2;
+                        basicDisplay.value = formatNumber(basicCurrent);
+                        curExpr = 'sqr(' + curExpr + ')';
+                        basicStart = true;
+                        updateFormula(formulaStr + curExpr);
+                        break;
+
+                    case 'x³':
+                        basicCurrent = basicCurrent ** 3;
+                        basicDisplay.value = formatNumber(basicCurrent);
+                        curExpr = 'cube(' + curExpr + ')';
+                        basicStart = true;
+                        updateFormula(formulaStr + curExpr);
+                        break;
+
+                    case '%':
+                        if (basicLastOp) {
+                            basicCurrent = basicResult * basicCurrent / 100;
+                        } else {
+                            basicCurrent = basicCurrent / 100;
+                        }
+                        basicDisplay.value = formatNumber(basicCurrent);
+                        curExpr = curExpr + '%';
+                        basicPercentUsed = true;
+                        basicStart = true;
+                        updateFormula(formulaStr + curExpr);
+                        break;
+
+                    case '÷': case '×': case '-': case '+':
+                        if (lastWasEqual) {
+                            // Продолжаем вычисление с результатом
+                            formulaStr = basicDisplay.value; // результат
+                            lastWasEqual = false;
+                            curExpr = '0';
+                        } else {
+                            // Добавляем текущий операнд в формулу
+                            formulaStr += curExpr;
+                        }
+                        // Обработка процента, если он был
+                        if (basicPercentUsed) {
+                            basicCalculate(basicCurrent);
+                            basicPercentUsed = false;
+                            // формула уже содержит число с %, не меняем её
+                        } else if (!basicStart) {
+                            basicCalculate(basicCurrent);
+                        }
+                        formulaStr += ' ' + text + ' ';
                         basicLastOp = text;
                         basicStart = true;
-                        formulaStr = basicDisplay.value + ' ' + text;
+                        curExpr = '0';
                         updateFormula(formulaStr);
                         break;
+
                     case '=':
-                        if(basicPercentUsed){ basicCalculate(basicCurrent); basicPercentUsed=false; }
-                        else basicCalculate(basicCurrent);
-                        formulaStr = formulaStr + ' ' + basicCurrent + ' =';
+                        if (lastWasEqual) {
+                            // Повторное нажатие = не делаем ничего (или можно повторить последнюю операцию, но не будем усложнять)
+                            break;
+                        }
+                        // Добавляем текущий операнд
+                        formulaStr += curExpr;
+                        if (basicPercentUsed) {
+                            basicCalculate(basicCurrent);
+                            basicPercentUsed = false;
+                        } else {
+                            basicCalculate(basicCurrent);
+                        }
+                        formulaStr += ' =';
+                        basicLastOp = '';
+                        basicStart = true;
+                        lastWasEqual = true;
+                        curExpr = formatNumber(basicCurrent);
                         updateFormula(formulaStr);
-                        basicLastOp=''; basicStart=true;
                         break;
-                    case '.':
-                        if(basicDisplay.value.indexOf('.')===-1) basicDisplay.value += '.';
-                        basicStart=false;
-                        formulaStr = basicDisplay.value;
-                        updateFormula(formulaStr);
-                        break;
-                    default: // цифры
-                        if(basicStart || basicDisplay.value==='0'){
-                            basicDisplay.value = text;
-                            basicStart = false;
-                        } else basicDisplay.value += text;
-                        basicCurrent = parseFloat(basicDisplay.value)||0;
-                        formulaStr = basicDisplay.value;
-                        updateFormula(formulaStr);
                 }
-            } catch(e) {
+            } catch (e) {
                 basicDisplay.value = getErrorText();
                 basicStart = true;
-                formulaStr = ''; updateFormula('');
+                formulaStr = '';
+                curExpr = '0';
+                updateFormula('');
             }
         }
 
