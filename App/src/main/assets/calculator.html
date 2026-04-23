@@ -857,7 +857,7 @@
     }
     initBasic();
 
-    // ---------- ИНЖЕНЕРНЫЙ КАЛЬКУЛЯТОР (ПОЛНОСТЬЮ ИСПРАВЛЕН) ----------
+    // ---------- ИНЖЕНЕРНЫЙ КАЛЬКУЛЯТОР (КОД ИЗ ВТОРОГО ВАРИАНТА + ФИКС ± ИЗ ПЕРВОГО) ----------
     var sciCurrent=0, sciResult=0, sciLastOp='', sciStartNew=true, sciExpression='', sciOpenParenCount=0, sciParenExpression='', isDegrees=true;
     var eeActive = false, eeMantissa = 0;
     var formulaStr = '';
@@ -865,8 +865,8 @@
     var repeatOp = null, repeatOperand = 0;
     var lastWasUnary = false, lastUnaryResult = 0;
     var powerBase = 0;
-    var lastParenOp = '';
-    var parenNumberBuffer = '';
+    var lastParenOp = '';               // последний оператор внутри скобок
+    var parenNumberBuffer = '';         // буфер числа для скобок
     const sciFormula = document.getElementById('sciFormula');
     const sciDisplay = document.getElementById('sciDisplay');
 
@@ -901,9 +901,6 @@
     // УСИЛЕННАЯ ФУНКЦИЯ ВЫЧИСЛЕНИЯ ВЫРАЖЕНИЙ (поддерживает функции и ^)
     function evaluateSimple(expr){ 
         try {
-            // Убираем пробелы
-            expr = expr.replace(/\s+/g, '');
-            
             // Замена операторов калькулятора на JS
             expr = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/\^/g, '**');
             
@@ -919,9 +916,9 @@
             expr = expr.replace(/√\(/g, 'Math.sqrt(');
             expr = expr.replace(/fact\(/g, 'factorial(');
             
-            // Константы: заменяем только отдельные π и e, не внутри чисел (используем границы слова \b)
-            expr = expr.replace(/\bπ\b/g, 'Math.PI');
-            expr = expr.replace(/\be\b/g, 'Math.E');
+            // Константы
+            expr = expr.replace(/π/g, 'Math.PI');
+            expr = expr.replace(/e/g, 'Math.E');
             
             // Факториал
             const factorial = (n) => {
@@ -982,11 +979,7 @@
                     eeActive = false;
                     let parts = sciDisplay.value.split('E');
                     let exponent = parseFloat(parts[1]) || 0;
-                    let result = Number(eeMantissa) * Math.pow(10, exponent);
-                    if (isNaN(result)) {
-                        sciDisplay.value = getErrorText();
-                        return;
-                    }
+                    let result = eeMantissa * Math.pow(10, exponent);
                     sciDisplay.value = formatNumber(result);
                     sciCurrent = result;
                     sciStartNew = true;
@@ -999,7 +992,7 @@
                 return;
             }
 
-            // Унарный минус
+            // Унарный минус (ФИКС ИЗ ПЕРВОГО ВАРИАНТА)
             if(text === '±') {
                 if (eeActive) {
                     let parts = sciDisplay.value.split('E');
@@ -1025,12 +1018,7 @@
             if (eeActive && (text === '=' || text === '+' || text === '-' || text === '×' || text === '÷')) {
                 let parts = sciDisplay.value.split('E');
                 let exponent = parseFloat(parts[1]) || 0;
-                let result = Number(eeMantissa) * Math.pow(10, exponent);
-                if (isNaN(result)) {
-                    sciDisplay.value = getErrorText();
-                    eeActive = false;
-                    return;
-                }
+                let result = eeMantissa * Math.pow(10, exponent);
                 sciDisplay.value = formatNumber(result);
                 sciCurrent = result;
                 eeActive = false;
@@ -1104,6 +1092,7 @@
                     }
                     
                     if (sciOpenParenCount > 0) {
+                        // Внутри скобок: результат только в буфер, не добавляем в sciParenExpression
                         parenNumberBuffer = isNaN(res) ? '' : res.toString();
                         formulaStr += funcStr;
                     } else {
@@ -1274,18 +1263,7 @@
                         formulaStr += ' ' + finalNum + ' =';
                         repeatOp = '^'; repeatOperand = exponent;
                         sciLastOp = ''; lastWasUnary = false;
-                    } else if (sciLastOp) {
-                        // Если есть активный бинарный оператор, используем sciCalculate
-                        var calcResult = sciCalculate(finalNum);
-                        if (!isNaN(calcResult)) {
-                            sciDisplay.value = formatNumber(calcResult);
-                            sciCurrent = calcResult;
-                            repeatOp = sciLastOp; repeatOperand = finalNum;
-                        }
-                        sciLastOp = '';
-                        formulaStr += ' ' + finalNum + ' =';
                     } else if (sciExpression) {
-                        // Нет оператора, но есть накопленное выражение (например, после унарных функций)
                         var exprFull = sciExpression + finalNum;
                         var resFull = evaluateSimple(exprFull);
                         if (isNaN(resFull)) {
@@ -1299,9 +1277,19 @@
                         repeatOp = sciLastOp; repeatOperand = finalNum;
                         sciLastOp = ''; lastWasUnary = false;
                     } else {
-                        // Ни оператора, ни выражения (например, просто нажали = после числа)
-                        if (!lastWasUnary) { formulaStr += ' ='; } else { if (!formulaStr.includes('=')) formulaStr += ' ='; }
-                        repeatOp = null;
+                        if (sciLastOp) {
+                            var calcResult = sciCalculate(finalNum);
+                            if (!isNaN(calcResult)) {
+                                sciDisplay.value = formatNumber(calcResult);
+                                sciCurrent = calcResult;
+                                repeatOp = sciLastOp; repeatOperand = finalNum;
+                            }
+                            sciLastOp = '';
+                            formulaStr += ' ' + finalNum + ' =';
+                        } else {
+                            if (!lastWasUnary) { formulaStr += ' ='; } else { if (!formulaStr.includes('=')) formulaStr += ' ='; }
+                            repeatOp = null;
+                        }
                     }
                     updateFormula(formulaStr);
                     sciStartNew = true; expectOperand = true;
