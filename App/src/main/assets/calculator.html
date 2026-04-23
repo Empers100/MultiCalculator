@@ -25,7 +25,7 @@
             --menu-bg: #ffffff;
             --menu-shadow: rgba(0,0,0,0.2);
         }
-        
+
         /* ----- ТЁМНАЯ ТЕМА ----- */
         body.dark {
             --bg-gradient-start: #1a1a2e;
@@ -297,7 +297,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* Обычный калькулятор — крупные кнопки */
         .buttons {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -331,27 +330,6 @@
             background: var(--btn-func-bg);
         }
 
-        .btn.toggle {
-            background: var(--btn-toggle-bg);
-            font-size: 14px;
-        }
-
-        /* ИНЖЕНЕРНЫЙ КАЛЬКУЛЯТОР — компактные кнопки */
-        .sci-buttons-container .buttons {
-            gap: 5px;
-        }
-
-        .sci-buttons-container .btn {
-            min-height: 38px;
-            padding: 6px 2px;
-            font-size: 14px;
-            border-radius: 8px;
-        }
-
-        .sci-buttons-container .btn.func {
-            font-size: 13px;
-        }
-
         /* ----- ДАТЫ ----- */
         .date-section {
             margin-bottom: 16px;
@@ -383,10 +361,6 @@
             color: var(--text-primary);
             flex: 1 1 0;
             min-width: 0;
-        }
-
-        #year1, #year2 {
-            flex: 1 1 0;
         }
 
         .calculate-btn {
@@ -427,12 +401,12 @@
             margin-top: 8px;
         }
 
-        /* Скрываем спиннеры у number */
         input[type=number]::-webkit-inner-spin-button,
         input[type=number]::-webkit-outer-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
+
         input[type=number] {
             -moz-appearance: textfield;
         }
@@ -444,7 +418,6 @@
     <div class="header">
         <div class="tabs">
             <button class="tab active" data-tab="basic" id="tabBasic">Калькулятор</button>
-            <button class="tab" data-tab="scientific" id="tabScientific">Инженерный</button>
             <button class="tab" data-tab="date" id="tabDate">Дата</button>
         </div>
         <button class="menu-btn" id="menuToggle">⋮</button>
@@ -471,7 +444,10 @@
 
     <!-- ВКЛАДКА КАЛЬКУЛЯТОР -->
     <div id="basic" class="tab-content active">
-        <input type="text" class="main-display" id="basicDisplay" value="0" readonly style="border-radius:16px; margin-bottom:8px;">
+        <div class="display-container">
+            <div class="formula-display" id="formulaDisplay"></div>
+            <input type="text" class="main-display" id="basicDisplay" value="0" readonly style="border-radius:0 0 16px 16px;">
+        </div>
         <div class="memory-row">
             <button class="memory-btn" data-mem="MC" disabled>MC</button>
             <button class="memory-btn" data-mem="MR" disabled>MR</button>
@@ -480,26 +456,6 @@
         </div>
         <div class="buttons-container">
             <div class="buttons" id="basicButtons"></div>
-        </div>
-    </div>
-
-    <!-- ВКЛАДКА ИНЖЕНЕРНЫЙ -->
-    <div id="scientific" class="tab-content">
-        <div class="display-container">
-            <div class="formula-display" id="sciFormula"></div>
-            <input type="text" class="main-display" id="sciDisplay" value="0" readonly>
-        </div>
-        <div class="memory-row">
-            <button class="memory-btn" data-mem="MC" disabled>MC</button>
-            <button class="memory-btn" data-mem="MR" disabled>MR</button>
-            <button class="memory-btn" data-mem="M+">M+</button>
-            <button class="memory-btn" data-mem="M-">M-</button>
-        </div>
-        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-            <button class="btn toggle" id="degRadToggle" style="flex:1; min-height: 38px;">DEG</button>
-        </div>
-        <div class="buttons-container sci-buttons-container">
-            <div class="buttons" id="sciButtons"></div>
         </div>
     </div>
 
@@ -523,926 +479,519 @@
         </div>
         <button class="calculate-btn" id="calculateDate">Вычислить</button>
         <div class="result">
-            <div class="result-main" id="dateResult">Результат: —</div>
+            <div class="result-main" id="dateResult">Результат: ---</div>
             <div class="result-detail" id="dateDetail"></div>
         </div>
     </div>
 </div>
 
 <script>
-(function(){
-    'use strict';
-    // ---------- ЛОКАЛИЗАЦИЯ ----------
-    const locales = {
-        ru: {
-            basic: 'Калькулятор',
-            scientific: 'Инженерный',
-            date: 'Дата',
-            firstDate: 'Первая дата',
-            secondDate: 'Вторая дата',
-            calculate: 'Вычислить',
-            result: 'Результат: —',
-            errorInvalidDate: 'Ошибка: некорректная дата',
-            errorYearZero: 'Ошибка: год 0 не существует',
-            langLabel: 'Язык / Language',
-            themeDark: 'Тёмная тема',
-            themeLight: 'Светлая тема',
-            shareBtn: '📤 Поделиться',
-            shareText: 'Многофункциональный калькулятор – попробуй:',
-            shareFallback: 'Ссылка скопирована! Расскажи друзьям.',
-            diffPrefix: 'Разница:',
-            orText: 'Или',
-            error: 'Ошибка',
-            formatYears: (y) => {
-                if (y === 0) return '0 лет';
-                const last = y % 10, last2 = y % 100;
-                if (last2 >= 11 && last2 <= 14) return y + ' лет';
-                if (last === 1) return y + ' год';
-                if (last >= 2 && last <= 4) return y + ' года';
-                return y + ' лет';
+    (function(){
+        'use strict';
+
+        // ---------- ЛОКАЛИЗАЦИЯ ----------
+        const locales = {
+            ru: {
+                basic: 'Калькулятор',
+                date: 'Дата',
+                firstDate: 'Первая дата',
+                secondDate: 'Вторая дата',
+                calculate: 'Вычислить',
+                result: 'Результат: ---',
+                errorInvalidDate: 'Ошибка: некорректная дата',
+                errorYearZero: 'Ошибка: год 0 не существует',
+                langLabel: 'Язык / Language',
+                themeDark: 'Тёмная тема',
+                themeLight: 'Светлая тема',
+                shareBtn: '📤 Поделиться',
+                shareText: 'Многофункциональный калькулятор — попробуй:',
+                shareFallback: 'Ссылка скопирована! Расскажи друзьям.',
+                diffPrefix: 'Разница:',
+                orText: 'Или',
+                error: 'Ошибка',
+                formatYears: (y) => {
+                    if (y === 0) return '0 лет';
+                    const last = y % 10, last2 = y % 100;
+                    if (last2 >= 11 && last2 <= 14) return y + ' лет';
+                    if (last === 1) return y + ' год';
+                    if (last >= 2 && last <= 4) return y + ' года';
+                    return y + ' лет';
+                },
+                formatMonths: (m) => {
+                    if (m === 0) return '0 месяцев';
+                    const last = m % 10, last2 = m % 100;
+                    if (last2 >= 11 && last2 <= 14) return m + ' месяцев';
+                    if (last === 1) return m + ' месяц';
+                    if (last >= 2 && last <= 4) return m + ' месяца';
+                    return m + ' месяцев';
+                },
+                formatDays: (d) => {
+                    if (d === 0) return '0 дней';
+                    const last = d % 10, last2 = d % 100;
+                    if (last2 >= 11 && last2 <= 14) return d + ' дней';
+                    if (last === 1) return d + ' день';
+                    if (last >= 2 && last <= 4) return d + ' дня';
+                    return d + ' дней';
+                }
             },
-            formatMonths: (m) => {
-                if (m === 0) return '0 месяцев';
-                const last = m % 10, last2 = m % 100;
-                if (last2 >= 11 && last2 <= 14) return m + ' месяцев';
-                if (last === 1) return m + ' месяц';
-                if (last >= 2 && last <= 4) return m + ' месяца';
-                return m + ' месяцев';
+            en: {
+                basic: 'Calculator',
+                date: 'Date',
+                firstDate: 'First date',
+                secondDate: 'Second date',
+                calculate: 'Calculate',
+                result: 'Result: ---',
+                errorInvalidDate: 'Error: invalid date',
+                errorYearZero: 'Error: year 0 does not exist',
+                langLabel: 'Language',
+                themeDark: 'Dark theme',
+                themeLight: 'Light theme',
+                shareBtn: '📤 Share',
+                shareText: 'Multi Calculator — try it:',
+                shareFallback: 'Link copied! Tell your friends.',
+                diffPrefix: 'Difference:',
+                orText: 'Or',
+                error: 'Error',
+                formatYears: (y) => y + (y === 1 ? ' year' : ' years'),
+                formatMonths: (m) => m + (m === 1 ? ' month' : ' months'),
+                formatDays: (d) => d + (d === 1 ? ' day' : ' days')
             },
-            formatDays: (d) => {
-                if (d === 0) return '0 дней';
-                const last = d % 10, last2 = d % 100;
-                if (last2 >= 11 && last2 <= 14) return d + ' дней';
-                if (last === 1) return d + ' день';
-                if (last >= 2 && last <= 4) return d + ' дня';
-                return d + ' дней';
+            zh: {
+                basic: '计算器',
+                date: '日期',
+                firstDate: '第一个日期',
+                secondDate: '第二个日期',
+                calculate: '计算',
+                result: '结果：---',
+                errorInvalidDate: '错误：无效日期',
+                errorYearZero: '错误：公元0年不存在',
+                langLabel: '语言',
+                themeDark: '深色主题',
+                themeLight: '浅色主题',
+                shareBtn: '📤 分享',
+                shareText: '多功能计算器 — 试试看：',
+                shareFallback: '链接已复制！分享给朋友吧。',
+                diffPrefix: '相差：',
+                orText: '或',
+                error: '错误',
+                formatYears: (y) => y + '年',
+                formatMonths: (m) => m + '个月',
+                formatDays: (d) => d + '天'
             }
-        },
-        en: {
-            basic: 'Calculator',
-            scientific: 'Scientific',
-            date: 'Date',
-            firstDate: 'First date',
-            secondDate: 'Second date',
-            calculate: 'Calculate',
-            result: 'Result: —',
-            errorInvalidDate: 'Error: invalid date',
-            errorYearZero: 'Error: year 0 does not exist',
-            langLabel: 'Language',
-            themeDark: 'Dark theme',
-            themeLight: 'Light theme',
-            shareBtn: '📤 Share',
-            shareText: 'Multi Calculator – try it:',
-            shareFallback: 'Link copied! Tell your friends.',
-            diffPrefix: 'Difference:',
-            orText: 'Or',
-            error: 'Error',
-            formatYears: (y) => y + (y === 1 ? ' year' : ' years'),
-            formatMonths: (m) => m + (m === 1 ? ' month' : ' months'),
-            formatDays: (d) => d + (d === 1 ? ' day' : ' days')
-        },
-        zh: {
-            basic: '计算器',
-            scientific: '科学',
-            date: '日期',
-            firstDate: '第一个日期',
-            secondDate: '第二个日期',
-            calculate: '计算',
-            result: '结果：—',
-            errorInvalidDate: '错误：无效日期',
-            errorYearZero: '错误：公元0年不存在',
-            langLabel: '语言',
-            themeDark: '深色主题',
-            themeLight: '浅色主题',
-            shareBtn: '📤 分享',
-            shareText: '多功能计算器 – 试试看：',
-            shareFallback: '链接已复制！分享给朋友吧。',
-            diffPrefix: '相差：',
-            orText: '或',
-            error: '错误',
-            formatYears: (y) => y + '年',
-            formatMonths: (m) => m + '个月',
-            formatDays: (d) => d + '天'
-        }
-    };
-
-    let currentLang = 'ru';
-    let lastDateResult = null;
-    let memory = 0;
-
-    function getErrorText() { return locales[currentLang].error; }
-
-    const elementsForLang = {
-        tabBasic: 'basic', tabScientific: 'scientific', tabDate: 'date',
-        firstDateLabel: 'firstDate', secondDateLabel: 'secondDate',
-        calculateDate: 'calculate', langLabel: 'langLabel', shareBtn: 'shareBtn'
-    };
-
-    function updateThemeLabel() {
-        const themeLabel = document.getElementById('themeLabel');
-        if (!themeLabel) return;
-        const isDark = document.body.classList.contains('dark');
-        themeLabel.textContent = isDark ? locales[currentLang].themeDark : locales[currentLang].themeLight;
-    }
-
-    function applyLanguage(lang) {
-        currentLang = lang;
-        Object.keys(elementsForLang).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = locales[lang][elementsForLang[id]];
-        });
-        updateThemeLabel();
-        const activeTab = document.querySelector('.tab-content.active');
-        if (activeTab && (activeTab.id === 'basic' || activeTab.id === 'scientific')) {
-            const display = document.getElementById(activeTab.id === 'basic' ? 'basicDisplay' : 'sciDisplay');
-            if (display && (display.value === 'Ошибка' || display.value === 'Error' || display.value === '错误')) {
-                display.value = getErrorText();
-            }
-        }
-        if (lastDateResult) { updateDateDisplay(); } else {
-            const dateResult = document.getElementById('dateResult');
-            const dateDetail = document.getElementById('dateDetail');
-            if (dateResult) dateResult.textContent = locales[lang].result;
-            if (dateDetail) dateDetail.textContent = '';
-        }
-        localStorage.setItem('calc_lang', lang);
-    }
-    
-    function updateDateDisplay() {
-        if (!lastDateResult) return;
-        const loc = locales[currentLang];
-        const { years, months, days, total } = lastDateResult;
-        const yearStr = loc.formatYears(years);
-        const monthStr = loc.formatMonths(months);
-        const dayStr = loc.formatDays(days);
-        const totalStr = loc.formatDays(total);
-        const dateResult = document.getElementById('dateResult');
-        const dateDetail = document.getElementById('dateDetail');
-        if (dateResult) dateResult.textContent = `${loc.diffPrefix} ${yearStr} ${monthStr} ${dayStr}`;
-        if (dateDetail) dateDetail.textContent = `${loc.orText} ${totalStr}`;
-    }
-
-    // ---------- ТЕМЫ ----------
-    function initTheme() {
-        const saved = localStorage.getItem('calc_theme');
-        if (saved === 'dark') document.body.classList.add('dark');
-        else document.body.classList.remove('dark');
-        updateThemeLabel();
-    }
-    function toggleTheme() {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('calc_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-        updateThemeLabel();
-    }
-
-    // ---------- МЕНЮ НАСТРОЕК ----------
-    const menuToggle = document.getElementById('menuToggle');
-    const settingsMenu = document.getElementById('settingsMenu');
-    if (menuToggle && settingsMenu) {
-        menuToggle.addEventListener('click', (e) => { e.stopPropagation(); settingsMenu.classList.toggle('show'); });
-        document.addEventListener('click', (e) => { if (!settingsMenu.contains(e.target) && e.target !== menuToggle) settingsMenu.classList.remove('show'); });
-    }
-    const langSelect = document.getElementById('langSelect');
-    if (langSelect) {
-        langSelect.value = localStorage.getItem('calc_lang') || 'ru';
-        applyLanguage(langSelect.value);
-        langSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
-    }
-    initTheme();
-    const themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
-
-    // ---------- Поделиться ----------
-    const shareBtn = document.getElementById('shareBtn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', () => {
-            let shareText = '';
-            const activeTab = document.querySelector('.tab.active')?.dataset.tab;
-            if (activeTab === 'basic' || activeTab === 'scientific') {
-                const display = document.getElementById(activeTab === 'basic' ? 'basicDisplay' : 'sciDisplay');
-                if (display) {
-                    const value = display.value;
-                    if (value && value !== getErrorText()) {
-                        if (currentLang === 'ru') shareText = `Результат вычисления: ${value}`;
-                        else if (currentLang === 'en') shareText = `Calculation result: ${value}`;
-                        else shareText = `计算结果：${value}`;
-                    } else shareText = locales[currentLang].shareText;
-                }
-            } else if (activeTab === 'date') {
-                if (lastDateResult) {
-                    const loc = locales[currentLang];
-                    const { years, months, days, total } = lastDateResult;
-                    shareText = `${loc.diffPrefix} ${loc.formatYears(years)} ${loc.formatMonths(months)} ${loc.formatDays(days)}. ${loc.orText} ${loc.formatDays(total)}.`;
-                } else {
-                    if (currentLang === 'ru') shareText = 'Калькулятор дат – вычисли разницу между датами!';
-                    else if (currentLang === 'en') shareText = 'Date calculator – compute date difference!';
-                    else shareText = '日期计算器 – 计算两个日期之间的差异！';
-                }
-            }
-            const shareUrl = 'https://github.com/Empers100/MultiCalculator';
-            const title = 'Multi Calculator';
-            if (typeof AndroidShare !== 'undefined' && AndroidShare.shareText) {
-                AndroidShare.shareText(title, shareText, shareUrl);
-            } else if (navigator.share) {
-                navigator.share({ title, text: shareText, url: shareUrl }).catch(() => {});
-            }
-            if (settingsMenu) settingsMenu.classList.remove('show');
-        });
-    }
-
-    // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------
-    function formatNumber(num) {
-        if (isNaN(num)) return getErrorText();
-        if (!isFinite(num)) {
-            return num > 0 ? '∞' : '-∞';
-        }
-        if (Number.isInteger(num)) return num.toString();
-        const absNum = Math.abs(num);
-        if (absNum < 1e-12 && absNum > 0) return num.toExponential(6).replace(/\.?0+e/, 'e');
-        if (absNum > 1e12) return num.toExponential(6).replace(/\.?0+e/, 'e');
-        return num.toFixed(12).replace(/\.?0+$/, '');
-    }
-
-    // ---------- ОБРАБОТЧИКИ ПАМЯТИ (ОБЩИЕ) ----------
-    function updateMemoryButtons() {
-        const mcBtns = document.querySelectorAll('.memory-btn[data-mem="MC"]');
-        const mrBtns = document.querySelectorAll('.memory-btn[data-mem="MR"]');
-        const disabled = (memory === 0);
-        mcBtns.forEach(btn => { btn.disabled = disabled; });
-        mrBtns.forEach(btn => { btn.disabled = disabled; });
-    }
-    updateMemoryButtons();
-
-    function handleMemory(action, displayElement) {
-        const currentValue = parseFloat(displayElement.value);
-        if (isNaN(currentValue) && (action === 'M+' || action === 'M-')) return;
-        switch (action) {
-            case 'MC': memory = 0; break;
-            case 'MR': displayElement.value = formatNumber(memory); break;
-            case 'M+': memory += currentValue; break;
-            case 'M-': memory -= currentValue; break;
-        }
-        updateMemoryButtons();
-    }
-
-    // ---------- ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ----------
-    const tabs = document.querySelectorAll('.tab');
-    const contents = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const target = tab.dataset.tab;
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
-            tab.classList.add('active');
-            const targetEl = document.getElementById(target);
-            if (targetEl) targetEl.classList.add('active');
-            updateMemoryButtons();
-        });
-    });
-
-    // ---------- ОБЫЧНЫЙ КАЛЬКУЛЯТОР ----------
-    var basicResult = 0, basicLastOp = '', basicStart = true, basicCurrent = 0, basicPercentUsed = false;
-    const basicDisplay = document.getElementById('basicDisplay');
-    function basicCalculate(num) {
-        switch (basicLastOp) {
-            case '+': basicResult += num; break;
-            case '-': basicResult -= num; break;
-            case '×': basicResult *= num; break;
-            case '÷': if(num===0){ basicDisplay.value = getErrorText(); return; } basicResult /= num; break;
-            default: basicResult = num;
-        }
-        basicCurrent = basicResult;
-        basicDisplay.value = formatNumber(basicResult);
-    }
-    function handleBasic(text) {
-        if (!basicDisplay) return;
-        try {
-            if (basicDisplay.value === getErrorText() && text !== 'C') { basicDisplay.value = '0'; basicCurrent = 0; basicStart = true; }
-            switch (text) {
-                case 'C': basicDisplay.value='0'; basicResult=0; basicCurrent=0; basicLastOp=''; basicStart=true; basicPercentUsed=false; break;
-                case '⌫': var s = basicDisplay.value; basicDisplay.value = (s.length>1 && s!=='0') ? s.slice(0,-1) : '0'; basicCurrent = parseFloat(basicDisplay.value)||0; break;
-                case '±': basicCurrent = -basicCurrent; basicDisplay.value = formatNumber(basicCurrent); break;
-                case '√': if(basicCurrent<0) basicDisplay.value = getErrorText(); else { basicCurrent = Math.sqrt(basicCurrent); basicDisplay.value=formatNumber(basicCurrent); } basicStart=true; break;
-                case '1/x': if(basicCurrent===0) basicDisplay.value = getErrorText(); else { basicCurrent = 1/basicCurrent; basicDisplay.value=formatNumber(basicCurrent); } basicStart=true; break;
-                case 'x²': basicCurrent = basicCurrent**2; basicDisplay.value=formatNumber(basicCurrent); basicStart=true; break;
-                case 'x³': basicCurrent = basicCurrent**3; basicDisplay.value=formatNumber(basicCurrent); basicStart=true; break;
-                case '%': if(basicLastOp) basicCurrent = basicResult * basicCurrent / 100; else basicCurrent = basicCurrent/100; basicDisplay.value=formatNumber(basicCurrent); basicPercentUsed=true; basicStart=true; break;
-                case '÷': case '×': case '-': case '+':
-                    if (!basicStart) {
-                        if(basicPercentUsed){ basicCalculate(basicCurrent); basicPercentUsed=false; } else basicCalculate(basicCurrent);
-                    }
-                    basicLastOp = text;
-                    basicStart = true;
-                    break;
-                case '=': if(basicPercentUsed){ basicCalculate(basicCurrent); basicPercentUsed=false; } else basicCalculate(basicCurrent); basicLastOp=''; basicStart=true; break;
-                case '.': if(basicDisplay.value.indexOf('.')===-1) basicDisplay.value += '.'; basicStart=false; break;
-                default:
-                    if(basicStart || basicDisplay.value==='0'){ basicDisplay.value = text; basicStart = false; }
-                    else basicDisplay.value += text;
-                    basicCurrent = parseFloat(basicDisplay.value)||0;
-            }
-        } catch(e) { basicDisplay.value = getErrorText(); basicStart = true; }
-    }
-    function initBasic() {
-        var basicLayout = [['C','⌫','%','÷'],['7','8','9','×'],['4','5','6','-'],['1','2','3','+'],['±','0','.','='],['√','1/x','x²','x³']];
-        var div = document.getElementById('basicButtons');
-        if (!div) return;
-        div.innerHTML = '';
-        basicLayout.forEach(row => row.forEach(txt => {
-            if(!txt) return;
-            var btn = document.createElement('button');
-            btn.className = 'btn' + (isNaN(txt) && txt!=='.' ? ' func' : '');
-            btn.textContent = txt;
-            btn.onclick = (function(t){ return function(){ handleBasic(t); }; })(txt);
-            div.appendChild(btn);
-        }));
-        document.querySelectorAll('#basic .memory-btn').forEach(btn => btn.addEventListener('click', () => handleMemory(btn.dataset.mem, basicDisplay)));
-        updateMemoryButtons();
-    }
-    initBasic();
-
-    // ---------- ИНЖЕНЕРНЫЙ КАЛЬКУЛЯТОР ----------
-    var sciCurrent=0, sciResult=0, sciLastOp='', sciStartNew=true, sciExpression='', sciOpenParenCount=0, sciParenExpression='', isDegrees=true;
-    var eeActive = false, eeMantissa = 0;
-    var formulaStr = '';
-    var expectOperand = true;
-    var repeatOp = null, repeatOperand = 0;
-    var lastWasUnary = false, lastUnaryResult = 0;
-    var powerBase = 0;
-    var lastParenOp = '';
-    var parenNumberBuffer = '';
-    const sciFormula = document.getElementById('sciFormula');
-    const sciDisplay = document.getElementById('sciDisplay');
-
-    function updateFormula(text) { if (sciFormula) sciFormula.textContent = text || ''; }
-    function getDisplayNumber(){ var s=sciDisplay.value; return (s===getErrorText()||s==='')?NaN:parseFloat(s); }
-    function sciCalculate(num) {
-        switch (sciLastOp) {
-            case '+': sciResult += num; break;
-            case '-': sciResult -= num; break;
-            case '×': sciResult *= num; break;
-            case '÷': if(num===0){ sciDisplay.value = getErrorText(); return NaN; } sciResult /= num; break;
-            default: sciResult = num;
-        }
-        return sciResult;
-    }
-    function evaluateTrig(func,val){ 
-        var angle=isDegrees?val*Math.PI/180:val; 
-        var res; 
-        switch(func){
-            case'sin':res=Math.sin(angle);break; 
-            case'cos':res=Math.cos(angle);break; 
-            case'tan':res=Math.tan(angle);break; 
-            case'asin':res=Math.asin(val);break; 
-            case'acos':res=Math.acos(val);break; 
-            case'atan':res=Math.atan(val);break; 
-            default:res=0;
-        } 
-        if(isDegrees&&(func==='asin'||func==='acos'||func==='atan')) res=res*180/Math.PI; 
-        return res; 
-    }
-    
-    function evaluateSimple(expr){ 
-        try {
-            expr = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/\^/g, '**');
-            expr = expr.replace(/sin\(/g, 'Math.sin(');
-            expr = expr.replace(/cos\(/g, 'Math.cos(');
-            expr = expr.replace(/tan\(/g, 'Math.tan(');
-            expr = expr.replace(/asin\(/g, 'Math.asin(');
-            expr = expr.replace(/acos\(/g, 'Math.acos(');
-            expr = expr.replace(/atan\(/g, 'Math.atan(');
-            expr = expr.replace(/log\(/g, 'Math.log10(');
-            expr = expr.replace(/ln\(/g, 'Math.log(');
-            expr = expr.replace(/√\(/g, 'Math.sqrt(');
-            expr = expr.replace(/fact\(/g, 'factorial(');
-            expr = expr.replace(/π/g, 'Math.PI');
-            expr = expr.replace(/e/g, 'Math.E');
-            const factorial = (n) => {
-                if (!Number.isInteger(n) || n < 0 || n > 170) throw new Error('Invalid factorial');
-                let f = 1;
-                for (let i = 2; i <= n; i++) f *= i;
-                return f;
-            };
-            const func = new Function('Math', 'factorial', 'return (' + expr + ')');
-            return func(Math, factorial);
-        } catch(e) {
-            return NaN;
-        }
-    }
-    
-    function handleSci(text) {
-        if (!sciDisplay) return;
-        try {
-            if(sciDisplay.value === getErrorText() && text !== 'C'){ 
-                sciDisplay.value='0'; sciCurrent=0; sciStartNew=true; 
-                sciExpression=''; sciParenExpression=''; sciOpenParenCount=0; eeActive = false; 
-                formulaStr = ''; expectOperand = true; updateFormula('');
-                repeatOp = null; lastWasUnary = false; lastParenOp = ''; parenNumberBuffer = '';
-            }
-            
-            if(text!=='1/x' && text!=='x^y' && text!=='EE' && text!=='±' && text.length===1 && ((text>='0'&&text<='9')||text==='.')){
-                if (eeActive) {
-                    let parts = sciDisplay.value.split('E');
-                    let expPart = parts[1] || '0';
-                    let sign = (expPart.startsWith('-')) ? '-' : '';
-                    let numPart = expPart.replace(/^-/, '');
-                    if (text === '.' && numPart.includes('.')) return;
-                    if (text === '.') { if (numPart === '0') numPart = '0.'; else numPart += '.'; }
-                    else { if (numPart === '0') numPart = text; else numPart += text; }
-                    sciDisplay.value = eeMantissa + 'E' + sign + numPart;
-                    return;
-                }
-                if(sciStartNew||sciDisplay.value==='0'){ 
-                    sciDisplay.value=text==='.'?'0.':text; sciStartNew=false; 
-                } else { 
-                    if(text==='.'&&sciDisplay.value.indexOf('.')!==-1)return; 
-                    sciDisplay.value+=text; 
-                }
-                sciCurrent=parseFloat(sciDisplay.value)||0;
-                if (sciOpenParenCount > 0) {
-                    parenNumberBuffer = sciDisplay.value;
-                }
-                if (sciLastOp !== '^') expectOperand = false;
-                lastParenOp = '';
-                return;
-            }
-            
-            if(text === 'EE') {
-                if (eeActive) {
-                    eeActive = false;
-                    let parts = sciDisplay.value.split('E');
-                    let exponent = parseFloat(parts[1]) || 0;
-                    let result = eeMantissa * Math.pow(10, exponent);
-                    sciDisplay.value = formatNumber(result);
-                    sciCurrent = result;
-                    sciStartNew = true;
-                } else {
-                    eeMantissa = parseFloat(sciDisplay.value) || 0;
-                    sciDisplay.value = eeMantissa + 'E0';
-                    eeActive = true;
-                    sciStartNew = false;
-                }
-                return;
-            }
-
-            if(text === '±') {
-                if (eeActive) {
-                    let parts = sciDisplay.value.split('E');
-                    let expPart = parts[1] || '0';
-                    if (expPart.startsWith('-')) expPart = expPart.substring(1);
-                    else expPart = '-' + expPart;
-                    sciDisplay.value = parts[0] + 'E' + expPart;
-                } else {
-                    let v = getDisplayNumber();
-                    if (!isNaN(v)) {
-                        sciCurrent = -v;
-                        sciDisplay.value = formatNumber(sciCurrent);
-                        if (sciOpenParenCount > 0) {
-                            parenNumberBuffer = sciCurrent.toString();
-                        }
-                    }
-                    sciStartNew = true;
-                }
-                return;
-            }
-
-            if (eeActive && (text === '=' || text === '+' || text === '-' || text === '×' || text === '÷')) {
-                let parts = sciDisplay.value.split('E');
-                let exponent = parseFloat(parts[1]) || 0;
-                let result = eeMantissa * Math.pow(10, exponent);
-                sciDisplay.value = formatNumber(result);
-                sciCurrent = result;
-                eeActive = false;
-                sciStartNew = true;
-            }
-
-            if (text !== '=' && text !== '(' && text !== ')' && text !== 'C') eeActive = false;
-            
-            switch(text){
-                case'C': 
-                    sciDisplay.value='0'; sciCurrent=0; sciResult=0; sciLastOp=''; 
-                    sciStartNew=true; sciExpression=''; sciParenExpression=''; 
-                    sciOpenParenCount=0; eeActive=false; 
-                    formulaStr = ''; expectOperand = true; updateFormula(''); 
-                    repeatOp = null; lastWasUnary = false; lastParenOp = ''; parenNumberBuffer = '';
-                    break;
-                case'⌫': 
-                    var s=sciDisplay.value; 
-                    sciDisplay.value=(s.length>1&&s!=='0')?s.slice(0,-1):'0'; 
-                    sciCurrent=parseFloat(sciDisplay.value)||0; 
-                    if (sciOpenParenCount > 0) parenNumberBuffer = sciDisplay.value;
-                    break;
-                case'π': 
-                    sciCurrent=Math.PI; sciDisplay.value=formatNumber(Math.PI); 
-                    sciStartNew=true; 
-                    if (sciOpenParenCount > 0) {
-                        parenNumberBuffer = Math.PI.toString();
-                        formulaStr += Math.PI;
-                    } else {
-                        if (!expectOperand) formulaStr += ' ' + Math.PI; else formulaStr += Math.PI;
-                    }
-                    updateFormula(formulaStr);
-                    expectOperand = false; repeatOp = null; lastWasUnary = false; lastParenOp = '';
-                    break;
-                case'e': 
-                    sciCurrent=Math.E; sciDisplay.value=formatNumber(Math.E); 
-                    sciStartNew=true; 
-                    if (sciOpenParenCount > 0) {
-                        parenNumberBuffer = Math.E.toString();
-                        formulaStr += Math.E;
-                    } else {
-                        if (!expectOperand) formulaStr += ' ' + Math.E; else formulaStr += Math.E;
-                    }
-                    updateFormula(formulaStr);
-                    expectOperand = false; repeatOp = null; lastWasUnary = false; lastParenOp = '';
-                    break;
-                case'sin':case'cos':case'tan':case'asin':case'acos':case'atan':
-                case'log':case'ln':case'√':case'1/x':case'n!':
-                    var val=parseFloat(sciDisplay.value)||0;
-                    var res;
-                    var funcStr;
-                    if (text === 'sin' || text === 'cos' || text === 'tan' || text === 'asin' || text === 'acos' || text === 'atan') {
-                        res = evaluateTrig(text, val);
-                        funcStr = text + '(' + val + ')';
-                    } else if (text === 'log') {
-                        res = (val <= 0) ? NaN : Math.log10(val);
-                        funcStr = 'log(' + val + ')';
-                    } else if (text === 'ln') {
-                        res = (val <= 0) ? NaN : Math.log(val);
-                        funcStr = 'ln(' + val + ')';
-                    } else if (text === '√') {
-                        res = (val < 0) ? NaN : Math.sqrt(val);
-                        funcStr = '√(' + val + ')';
-                    } else if (text === '1/x') {
-                        res = (val === 0) ? NaN : 1 / val;
-                        funcStr = '1/(' + val + ')';
-                    } else if (text === 'n!') {
-                        if (!Number.isInteger(val) || val < 0 || val > 170) res = NaN;
-                        else { var f=1; for(var i=2;i<=val;i++) f*=i; res = f; }
-                        funcStr = 'fact(' + val + ')';
-                    }
-                    
-                    if (sciOpenParenCount > 0) {
-                        parenNumberBuffer = isNaN(res) ? '' : res.toString();
-                        formulaStr += funcStr;
-                    } else {
-                        if (!expectOperand) formulaStr += ' ' + funcStr; else formulaStr += funcStr;
-                    }
-                    
-                    if (isNaN(res)) { sciDisplay.value = getErrorText(); sciCurrent = 0; }
-                    else { sciDisplay.value = formatNumber(res); sciCurrent = res; }
-                    
-                    updateFormula(formulaStr);
-                    sciStartNew = true;
-                    expectOperand = false; lastWasUnary = true; lastUnaryResult = res; repeatOp = null; lastParenOp = '';
-                    break;
-                case 'x^y': 
-                    if (sciLastOp === '^') return;
-                    var base = parseFloat(sciDisplay.value) || 0;
-                    
-                    if (sciOpenParenCount > 0) {
-                        var numToAdd = parenNumberBuffer || base.toString();
-                        if (lastParenOp) {
-                            sciParenExpression = sciParenExpression.slice(0, - (lastParenOp.length + 2));
-                            formulaStr = formulaStr.slice(0, - (lastParenOp.length + 2));
-                        } else {
-                            sciParenExpression += numToAdd;
-                            formulaStr += numToAdd;
-                        }
-                        sciParenExpression += ' ^ ';
-                        formulaStr += ' ^ ';
-                        lastParenOp = '^';
-                        parenNumberBuffer = '';
-                    } else {
-                        powerBase = base;
-                        sciResult = powerBase;
-                        sciLastOp = '^';
-                        formulaStr = base + ' ^ ';
-                        updateFormula(formulaStr);
-                    }
-                    sciStartNew = true;
-                    expectOperand = true;
-                    repeatOp = null;
-                    lastWasUnary = false;
-                    break;
-                case '(': 
-                    sciOpenParenCount++; 
-                    sciStartNew = true; 
-                    sciDisplay.value = '0';
-                    if (!expectOperand && formulaStr.length > 0 && !formulaStr.endsWith('(')) formulaStr += ' ';
-                    formulaStr += '(';
-                    updateFormula(formulaStr);
-                    expectOperand = true; repeatOp = null; lastWasUnary = false; lastParenOp = ''; parenNumberBuffer = '';
-                    break;
-                case ')': 
-                    if (sciOpenParenCount <= 0) { sciDisplay.value = getErrorText(); break; }
-                    var currentVal = sciDisplay.value;
-                    var finalExpr = sciParenExpression + (parenNumberBuffer || currentVal);
-                    var result = evaluateSimple(finalExpr);
-                    if (isNaN(result)) {
-                        sciDisplay.value = getErrorText();
-                    } else {
-                        sciDisplay.value = formatNumber(result);
-                        sciCurrent = result;
-                    }
-                    sciOpenParenCount--; 
-                    sciParenExpression = ''; 
-                    formulaStr += (parenNumberBuffer || currentVal) + ')';
-                    updateFormula(formulaStr);
-                    parenNumberBuffer = '';
-                    lastParenOp = '';
-                    sciStartNew = true;
-                    expectOperand = false;
-                    repeatOp = null; lastWasUnary = false;
-                    break;
-                case '+': case '-': case '×': case '÷': 
-                    var op = text;
-                    var currentNum = parseFloat(sciDisplay.value);
-                    
-                    if (sciOpenParenCount > 0) {
-                        var numToAdd = parenNumberBuffer || currentNum.toString();
-                        if (lastParenOp) {
-                            sciParenExpression = sciParenExpression.slice(0, - (lastParenOp.length + 2));
-                            formulaStr = formulaStr.slice(0, - (lastParenOp.length + 2));
-                        } else {
-                            sciParenExpression += numToAdd;
-                            formulaStr += numToAdd;
-                        }
-                        sciParenExpression += ' ' + op + ' ';
-                        formulaStr += ' ' + op + ' ';
-                        lastParenOp = op;
-                        parenNumberBuffer = '';
-                    } else {
-                        if (!sciStartNew) {
-                            // Было введено число — выполняем предыдущую операцию
-                            if (sciLastOp) {
-                                var calcResult = sciCalculate(currentNum);
-                                if (!isNaN(calcResult)) {
-                                    sciDisplay.value = formatNumber(calcResult);
-                                    sciCurrent = calcResult;
-                                    sciResult = calcResult;
-                                }
-                            } else {
-                                sciResult = currentNum;
-                            }
-                            if (sciExpression) sciExpression += sciDisplay.value + ' ' + op + ' ';
-                            else sciExpression = sciDisplay.value + ' ' + op + ' ';
-                            formulaStr += ' ' + currentNum + ' ' + op;
-                        } else {
-                            // Оператор нажат после другого оператора — заменяем оператор в формуле и выражении
-                            if (sciLastOp) {
-                                var lastOpIndex = formulaStr.lastIndexOf(' ');
-                                if (lastOpIndex !== -1) {
-                                    formulaStr = formulaStr.substring(0, lastOpIndex + 1) + op;
-                                } else {
-                                    formulaStr = sciResult + ' ' + op;
-                                }
-                            } else {
-                                formulaStr = sciResult + ' ' + op;
-                            }
-                            // Обновляем sciExpression соответственно
-                            if (sciExpression) {
-                                var lastOpIndexExpr = sciExpression.lastIndexOf(' ');
-                                if (lastOpIndexExpr !== -1) {
-                                    sciExpression = sciExpression.substring(0, lastOpIndexExpr + 1) + op + ' ';
-                                } else {
-                                    sciExpression = sciResult + ' ' + op + ' ';
-                                }
-                            } else {
-                                sciExpression = sciResult + ' ' + op + ' ';
-                            }
-                        }
-                        lastParenOp = '';
-                    }
-                    updateFormula(formulaStr);
-                    
-                    sciLastOp = op;
-                    repeatOp = op; repeatOperand = currentNum;
-                    sciStartNew = true;
-                    expectOperand = true;
-                    lastWasUnary = false;
-                    break;
-                case '=': 
-                    if (sciOpenParenCount > 0) {
-                        var curVal = sciDisplay.value;
-                        var exprToEval = sciParenExpression + (parenNumberBuffer || curVal);
-                        var resEval = evaluateSimple(exprToEval);
-                        if (isNaN(resEval)) {
-                            sciDisplay.value = getErrorText();
-                        } else {
-                            sciDisplay.value = formatNumber(resEval);
-                            sciCurrent = resEval;
-                        }
-                        sciOpenParenCount = 0;
-                        sciParenExpression = '';
-                        formulaStr += (parenNumberBuffer || curVal) + ')';
-                        updateFormula(formulaStr);
-                        parenNumberBuffer = '';
-                        sciStartNew = true;
-                        return;
-                    }
-                    
-                    var finalNum = parseFloat(sciDisplay.value);
-                    if (sciStartNew && repeatOp && !sciLastOp) {
-                        let prevResult = parseFloat(sciDisplay.value);
-                        let newResult;
-                        if (repeatOp === '^') {
-                            newResult = Math.pow(prevResult, repeatOperand);
-                        } else {
-                            switch (repeatOp) {
-                                case '+': newResult = prevResult + repeatOperand; break;
-                                case '-': newResult = prevResult - repeatOperand; break;
-                                case '×': newResult = prevResult * repeatOperand; break;
-                                case '÷': newResult = prevResult / repeatOperand; break;
-                                default: newResult = prevResult;
-                            }
-                        }
-                        sciDisplay.value = formatNumber(newResult);
-                        sciCurrent = newResult;
-                        formulaStr = prevResult + ' ' + (repeatOp==='^'?'^':repeatOp) + ' ' + repeatOperand + ' =';
-                        updateFormula(formulaStr);
-                        sciStartNew = true;
-                        return;
-                    }
-                    if (sciStartNew && ((lastWasUnary && !sciLastOp) || (!sciLastOp && !repeatOp))) {
-                        sciStartNew = true;
-                        return;
-                    }
-                    if (sciLastOp === '^') {
-                        var exponent = finalNum;
-                        sciResult = Math.pow(powerBase, exponent);
-                        sciDisplay.value = formatNumber(sciResult);
-                        formulaStr += ' ' + finalNum + ' =';
-                        repeatOp = '^'; repeatOperand = exponent;
-                        sciLastOp = ''; lastWasUnary = false;
-                    } else if (sciExpression) {
-                        var exprFull = sciExpression + finalNum;
-                        var resFull = evaluateSimple(exprFull);
-                        if (isNaN(resFull)) {
-                            sciDisplay.value = getErrorText();
-                        } else {
-                            sciDisplay.value = formatNumber(resFull);
-                            sciCurrent = resFull;
-                        }
-                        formulaStr += ' ' + finalNum + ' =';
-                        sciExpression = '';
-                        repeatOp = sciLastOp; repeatOperand = finalNum;
-                        sciLastOp = ''; lastWasUnary = false;
-                    } else {
-                        if (sciLastOp) {
-                            var calcResult = sciCalculate(finalNum);
-                            if (!isNaN(calcResult)) {
-                                sciDisplay.value = formatNumber(calcResult);
-                                sciCurrent = calcResult;
-                                repeatOp = sciLastOp; repeatOperand = finalNum;
-                            }
-                            sciLastOp = '';
-                            formulaStr += ' ' + finalNum + ' =';
-                        } else {
-                            if (!lastWasUnary) { formulaStr += ' ='; } else { if (!formulaStr.includes('=')) formulaStr += ' ='; }
-                            repeatOp = null;
-                        }
-                    }
-                    updateFormula(formulaStr);
-                    sciStartNew = true; expectOperand = true;
-                    if (!lastWasUnary) lastWasUnary = false;
-                    break;
-            }
-        } catch(e){ 
-            sciDisplay.value = getErrorText(); 
-            sciStartNew=true; sciParenExpression=''; sciOpenParenCount=0; eeActive=false; 
-            formulaStr = ''; updateFormula(''); repeatOp = null; lastWasUnary = false; lastParenOp = ''; parenNumberBuffer = '';
-        }
-    }
-
-    function initSci() {
-        var sciLayout = [
-            ['C','⌫','(',')'],
-            ['sin','cos','tan','÷'],
-            ['asin','acos','atan','×'],
-            ['log','ln','√','-'],
-            ['x^y','1/x','n!','+'],
-            ['7','8','9','±'],
-            ['4','5','6','.'],
-            ['1','2','3','='],
-            ['0','EE','π','e']
-        ];
-        var div = document.getElementById('sciButtons');
-        if (!div) return;
-        div.innerHTML = '';
-        sciLayout.forEach(row => row.forEach(txt => {
-            if(!txt) return;
-            var btn = document.createElement('button');
-            var isSpecial = txt==='.'||txt==='='||txt==='EE'||txt==='π'||txt==='e';
-            btn.className = 'btn' + (isNaN(txt) && !isSpecial ? ' func' : '');
-            btn.textContent = txt;
-            btn.onclick = (function(t){ return function(){ handleSci(t); }; })(txt);
-            div.appendChild(btn);
-        }));
-        const degRadToggle = document.getElementById('degRadToggle');
-        if (degRadToggle) degRadToggle.onclick = function(){ isDegrees=!isDegrees; this.textContent=isDegrees?'DEG':'RAD'; };
-        document.querySelectorAll('#scientific .memory-btn').forEach(btn => btn.addEventListener('click', () => handleMemory(btn.dataset.mem, sciDisplay)));
-        updateMemoryButtons();
-    }
-    initSci();
-
-    // ---------- КАЛЬКУЛЯТОР ДАТ ----------
-    function initDate() {
-        var monthSelect1 = document.getElementById('month1'), monthSelect2 = document.getElementById('month2');
-        if (!monthSelect1 || !monthSelect2) return;
-        for(var i=1; i<=12; i++){ monthSelect1.add(new Option(i,i)); monthSelect2.add(new Option(i,i)); }
-        monthSelect1.value='1'; monthSelect2.value='1';
-        function isLeap(year){ if(year===0)return false; var absY=Math.abs(year); return(absY%4===0&&absY%100!==0)||(absY%400===0); }
-        function daysInMonth(month,year){ if(month===2)return isLeap(year)?29:28; return[4,6,9,11].indexOf(month)!==-1?30:31; }
-        function isValid(day,month,year){ if(year===0)return false; if(month<1||month>12||day<1)return false; return day<=daysInMonth(month,year); }
-        function compareDates(y1,m1,d1,y2,m2,d2){ if(y1!==y2)return y1-y2; if(m1!==m2)return m1-m2; return d1-d2; }
-        function dateToAbs(year,month,day){ var days=0; if(year>0){ for(var y=1;y<year;y++)days+=isLeap(y)?366:365; } else if(year<0){ for(var y=year;y<0;y++)days-=isLeap(y)?366:365; } for(var m=1;m<month;m++)days+=daysInMonth(m,year); return days+day-1; }
-        function calculateDateDiff(y1,m1,d1,y2,m2,d2){
-            var fromY=y1, fromM=m1, fromD=d1, toY=y2, toM=m2, toD=d2;
-            if(compareDates(y1,m1,d1,y2,m2,d2)>0){
-                var tmp;
-                tmp=fromY; fromY=toY; toY=tmp;
-                tmp=fromM; fromM=toM; toM=tmp;
-                tmp=fromD; fromD=toD; toD=tmp;
-            }
-            var years = toY - fromY;
-            if(toM < fromM || (toM === fromM && toD < fromD)) years--;
-            if(fromY < 0 && toY > 0) years--;
-            var months = toM >= fromM ? toM - fromM : 12 + toM - fromM;
-            if(toD < fromD){ months--; if(months < 0){ months += 12; years--; } }
-            var days;
-            if(toD >= fromD) days = toD - fromD;
-            else { var dim = daysInMonth(fromM, fromY); days = dim - fromD + toD; }
-            return { years, months, days };
-        }
-        function computeAndDisplay() {
-            var d1=+document.getElementById('day1').value, m1=+monthSelect1.value, y1=+document.getElementById('year1').value;
-            var d2=+document.getElementById('day2').value, m2=+monthSelect2.value, y2=+document.getElementById('year2').value;
-            if(!isValid(d1,m1,y1) || !isValid(d2,m2,y2) || y1===0 || y2===0){
-                lastDateResult = null;
-                const dateResult = document.getElementById('dateResult'), dateDetail = document.getElementById('dateDetail');
-                if (dateResult) dateResult.textContent = locales[currentLang].errorInvalidDate;
-                if (dateDetail) dateDetail.textContent = '';
-                return;
-            }
-            var diff = calculateDateDiff(y1,m1,d1,y2,m2,d2);
-            var total = Math.abs(dateToAbs(y1,m1,d1) - dateToAbs(y2,m2,d2));
-            lastDateResult = { years: diff.years, months: diff.months, days: diff.days, total: total };
-            updateDateDisplay();
-        }
-        const calculateBtn = document.getElementById('calculateDate');
-        if (calculateBtn) calculateBtn.onclick = computeAndDisplay;
-        setTimeout(computeAndDisplay, 10);
-    }
-    initDate();
-
-    // ========== ПОДДЕРЖКА ФИЗИЧЕСКОЙ КЛАВИАТУРЫ ==========
-    function handleKeyDown(e) {
-        const key = e.key;
-        const activeTab = document.querySelector('.tab-content.active')?.id;
-        if (!activeTab) return;
-
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-        if (/^[0-9.]$/.test(key)) {
-            e.preventDefault();
-            if (activeTab === 'basic') handleBasic(key);
-            else if (activeTab === 'scientific') handleSci(key);
-            return;
-        }
-
-        const operatorMap = {
-            '+': '+', '-': '-', '*': '×', '/': '÷', 'Enter': '=',
-            'Escape': 'C', 'Backspace': '⌫', '^': 'x^y', '!': 'n!',
-            's': 'sin', 'c': 'cos', 't': 'tan', 'l': 'log', 'n': 'ln',
-            'q': '√', 'p': 'π', 'e': 'e', '(': '(', ')': ')'
         };
 
-        let mapped = operatorMap[key];
-        if (!mapped && key === '=') mapped = '=';
-        if (!mapped && key === 'Enter') mapped = '=';
-        
-        if (mapped) {
-            e.preventDefault();
-            if (activeTab === 'basic') {
-                if (['+','-','×','÷','=','C','⌫'].includes(mapped)) handleBasic(mapped);
-            } else if (activeTab === 'scientific') {
-                handleSci(mapped);
-            }
-            return;
+        let currentLang = 'ru';
+        let lastDateResult = null;
+        let memory = 0;
+
+        function getErrorText() { return locales[currentLang].error; }
+
+        const elementsForLang = {
+            tabBasic: 'basic', tabDate: 'date',
+            firstDateLabel: 'firstDate', secondDateLabel: 'secondDate',
+            calculateDate: 'calculate', langLabel: 'langLabel', shareBtn: 'shareBtn'
+        };
+
+        function updateThemeLabel() {
+            const themeLabel = document.getElementById('themeLabel');
+            if (!themeLabel) return;
+            const isDark = document.body.classList.contains('dark');
+            themeLabel.textContent = isDark ? locales[currentLang].themeDark : locales[currentLang].themeLight;
         }
 
-        if (e.shiftKey) {
-            const shiftMap = { '8': '(', '9': ')' };
-            if (shiftMap[key]) {
+        function applyLanguage(lang) {
+            currentLang = lang;
+            Object.keys(elementsForLang).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = locales[lang][elementsForLang[id]];
+            });
+            updateThemeLabel();
+            const basicDisplay = document.getElementById('basicDisplay');
+            if (basicDisplay && (basicDisplay.value === 'Ошибка' || basicDisplay.value === 'Error' || basicDisplay.value === '错误')) {
+                basicDisplay.value = getErrorText();
+            }
+            if (lastDateResult) { updateDateDisplay(); } else {
+                const dateResult = document.getElementById('dateResult');
+                const dateDetail = document.getElementById('dateDetail');
+                if (dateResult) dateResult.textContent = locales[lang].result;
+                if (dateDetail) dateDetail.textContent = '';
+            }
+            localStorage.setItem('calc_lang', lang);
+        }
+
+        function updateDateDisplay() {
+            if (!lastDateResult) return;
+            const loc = locales[currentLang];
+            const { years, months, days, total } = lastDateResult;
+            const yearStr = loc.formatYears(years);
+            const monthStr = loc.formatMonths(months);
+            const dayStr = loc.formatDays(days);
+            const totalStr = loc.formatDays(total);
+            const dateResult = document.getElementById('dateResult');
+            const dateDetail = document.getElementById('dateDetail');
+            if (dateResult) dateResult.textContent = `${loc.diffPrefix} ${yearStr} ${monthStr} ${dayStr}`;
+            if (dateDetail) dateDetail.textContent = `${loc.orText} ${totalStr}`;
+        }
+
+        // ---------- ТЕМЫ ----------
+        function initTheme() {
+            const saved = localStorage.getItem('calc_theme');
+            if (saved === 'dark') document.body.classList.add('dark');
+            else document.body.classList.remove('dark');
+            updateThemeLabel();
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('calc_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+            updateThemeLabel();
+        }
+
+        // ---------- МЕНЮ НАСТРОЕК ----------
+        const menuToggle = document.getElementById('menuToggle');
+        const settingsMenu = document.getElementById('settingsMenu');
+        if (menuToggle && settingsMenu) {
+            menuToggle.addEventListener('click', (e) => { e.stopPropagation(); settingsMenu.classList.toggle('show'); });
+            document.addEventListener('click', (e) => { if (!settingsMenu.contains(e.target) && e.target !== menuToggle) settingsMenu.classList.remove('show'); });
+        }
+
+        const langSelect = document.getElementById('langSelect');
+        if (langSelect) {
+            langSelect.value = localStorage.getItem('calc_lang') || 'ru';
+            applyLanguage(langSelect.value);
+            langSelect.addEventListener('change', (e) => applyLanguage(e.target.value));
+        }
+
+        initTheme();
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+
+        // ---------- Поделиться ----------
+        const shareBtn = document.getElementById('shareBtn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                let shareText = '';
+                const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+                if (activeTab === 'basic') {
+                    const display = document.getElementById('basicDisplay');
+                    if (display) {
+                        const value = display.value;
+                        if (value && value !== getErrorText()) {
+                            if (currentLang === 'ru') shareText = `Результат вычисления: ${value}`;
+                            else if (currentLang === 'en') shareText = `Calculation result: ${value}`;
+                            else shareText = `计算结果：${value}`;
+                        } else shareText = locales[currentLang].shareText;
+                    }
+                } else if (activeTab === 'date') {
+                    if (lastDateResult) {
+                        const loc = locales[currentLang];
+                        const { years, months, days, total } = lastDateResult;
+                        shareText = `${loc.diffPrefix} ${loc.formatYears(years)} ${loc.formatMonths(months)} ${loc.formatDays(days)}. ${loc.orText} ${loc.formatDays(total)}.`;
+                    } else {
+                        if (currentLang === 'ru') shareText = 'Калькулятор дат — вычисли разницу между датами!';
+                        else if (currentLang === 'en') shareText = 'Date calculator — compute date difference!';
+                        else shareText = '日期计算器 — 计算两个日期之间的差异！';
+                    }
+                }
+                const shareUrl = 'https://github.com/Empers100/MultiCalculator';
+                const title = 'Multi Calculator';
+                if (typeof AndroidShare !== 'undefined' && AndroidShare.shareText) {
+                    AndroidShare.shareText(title, shareText, shareUrl);
+                } else if (navigator.share) {
+                    navigator.share({ title, text: shareText, url: shareUrl }).catch(() => {});
+                }
+                if (settingsMenu) settingsMenu.classList.remove('show');
+            });
+        }
+
+        // ---------- ФОРМАТИРОВАНИЕ ЧИСЛА ----------
+        function formatNumber(num) {
+            if (isNaN(num)) return getErrorText();
+            if (!isFinite(num)) return num > 0 ? '∞' : '-∞';
+            if (Number.isInteger(num)) return num.toString();
+            const absNum = Math.abs(num);
+            if (absNum < 1e-12 && absNum > 0) return num.toExponential(6).replace(/\.?0+e/, 'e');
+            if (absNum > 1e12) return num.toExponential(6).replace(/\.?0+e/, 'e');
+            return num.toFixed(12).replace(/\.?0+$/, '');
+        }
+
+        // ---------- ПАМЯТЬ ----------
+        function updateMemoryButtons() {
+            const mcBtns = document.querySelectorAll('.memory-btn[data-mem="MC"]');
+            const mrBtns = document.querySelectorAll('.memory-btn[data-mem="MR"]');
+            const disabled = (memory === 0);
+            mcBtns.forEach(btn => { btn.disabled = disabled; });
+            mrBtns.forEach(btn => { btn.disabled = disabled; });
+        }
+
+        function handleMemory(action, displayElement) {
+            const currentValue = parseFloat(displayElement.value);
+            if (isNaN(currentValue) && (action === 'M+' || action === 'M-')) return;
+            switch (action) {
+                case 'MC': memory = 0; break;
+                case 'MR': displayElement.value = formatNumber(memory); break;
+                case 'M+': memory += currentValue; break;
+                case 'M-': memory -= currentValue; break;
+            }
+            updateMemoryButtons();
+        }
+
+        // ---------- ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ----------
+        const tabs = document.querySelectorAll('.tab');
+        const contents = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tab;
+                tabs.forEach(t => t.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                const targetEl = document.getElementById(target);
+                if (targetEl) targetEl.classList.add('active');
+                updateMemoryButtons();
+            });
+        });
+
+        // ---------- ОБЫЧНЫЙ КАЛЬКУЛЯТОР (С ФОРМУЛОЙ) ----------
+        const basicDisplay = document.getElementById('basicDisplay');
+        const formulaDisplay = document.getElementById('formulaDisplay');
+
+        let basicResult = 0;
+        let basicLastOp = '';
+        let basicStart = true;
+        let basicCurrent = 0;
+        let basicPercentUsed = false;
+        let formulaStr = '';
+
+        function updateFormula(text) {
+            if (formulaDisplay) formulaDisplay.textContent = text || '';
+        }
+
+        function basicCalculate(num) {
+            switch (basicLastOp) {
+                case '+': basicResult += num; break;
+                case '-': basicResult -= num; break;
+                case '×': basicResult *= num; break;
+                case '÷': if(num===0){ basicDisplay.value = getErrorText(); formulaStr = ''; updateFormula(''); return; } basicResult /= num; break;
+                default: basicResult = num;
+            }
+            basicCurrent = basicResult;
+            basicDisplay.value = formatNumber(basicResult);
+        }
+
+        function handleBasic(text) {
+            if (!basicDisplay) return;
+            try {
+                if (basicDisplay.value === getErrorText() && text !== 'C') {
+                    basicDisplay.value = '0'; basicCurrent = 0; basicStart = true;
+                    formulaStr = ''; updateFormula('');
+                }
+
+                switch (text) {
+                    case 'C':
+                        basicDisplay.value='0'; basicResult=0; basicCurrent=0; basicLastOp='';
+                        basicStart=true; basicPercentUsed=false;
+                        formulaStr = ''; updateFormula('');
+                        break;
+                    case '⌫':
+                        var s = basicDisplay.value;
+                        basicDisplay.value = (s.length>1 && s!=='0') ? s.slice(0,-1) : '0';
+                        basicCurrent = parseFloat(basicDisplay.value)||0;
+                        formulaStr = formulaStr.slice(0, -1);
+                        updateFormula(formulaStr);
+                        break;
+                    case '±':
+                        basicCurrent = -basicCurrent;
+                        basicDisplay.value = formatNumber(basicCurrent);
+                        break;
+                    case '√':
+                        if(basicCurrent<0) basicDisplay.value = getErrorText();
+                        else { basicCurrent = Math.sqrt(basicCurrent); basicDisplay.value=formatNumber(basicCurrent); }
+                        basicStart=true;
+                        formulaStr = `√(${formulaStr || basicDisplay.value})`;
+                        updateFormula(formulaStr);
+                        break;
+                    case '1/x':
+                        if(basicCurrent===0) basicDisplay.value = getErrorText();
+                        else { basicCurrent = 1/basicCurrent; basicDisplay.value=formatNumber(basicCurrent); }
+                        basicStart=true;
+                        formulaStr = `1/(${formulaStr || basicDisplay.value})`;
+                        updateFormula(formulaStr);
+                        break;
+                    case 'x²':
+                        basicCurrent = basicCurrent**2;
+                        basicDisplay.value=formatNumber(basicCurrent);
+                        basicStart=true;
+                        formulaStr = `(${formulaStr || basicDisplay.value})²`;
+                        updateFormula(formulaStr);
+                        break;
+                    case 'x³':
+                        basicCurrent = basicCurrent**3;
+                        basicDisplay.value=formatNumber(basicCurrent);
+                        basicStart=true;
+                        formulaStr = `(${formulaStr || basicDisplay.value})³`;
+                        updateFormula(formulaStr);
+                        break;
+                    case '%':
+                        if(basicLastOp) basicCurrent = basicResult * basicCurrent / 100;
+                        else basicCurrent = basicCurrent/100;
+                        basicDisplay.value=formatNumber(basicCurrent);
+                        basicPercentUsed=true; basicStart=true;
+                        break;
+                    case '÷': case '×': case '-': case '+':
+                        if (!basicStart) {
+                            if(basicPercentUsed){ basicCalculate(basicCurrent); basicPercentUsed=false; }
+                            else basicCalculate(basicCurrent);
+                        }
+                        basicLastOp = text;
+                        basicStart = true;
+                        formulaStr = basicDisplay.value + ' ' + text;
+                        updateFormula(formulaStr);
+                        break;
+                    case '=':
+                        if(basicPercentUsed){ basicCalculate(basicCurrent); basicPercentUsed=false; }
+                        else basicCalculate(basicCurrent);
+                        formulaStr = formulaStr + ' ' + basicCurrent + ' =';
+                        updateFormula(formulaStr);
+                        basicLastOp=''; basicStart=true;
+                        break;
+                    case '.':
+                        if(basicDisplay.value.indexOf('.')===-1) basicDisplay.value += '.';
+                        basicStart=false;
+                        formulaStr = basicDisplay.value;
+                        updateFormula(formulaStr);
+                        break;
+                    default: // цифры
+                        if(basicStart || basicDisplay.value==='0'){
+                            basicDisplay.value = text;
+                            basicStart = false;
+                        } else basicDisplay.value += text;
+                        basicCurrent = parseFloat(basicDisplay.value)||0;
+                        formulaStr = basicDisplay.value;
+                        updateFormula(formulaStr);
+                }
+            } catch(e) {
+                basicDisplay.value = getErrorText();
+                basicStart = true;
+                formulaStr = ''; updateFormula('');
+            }
+        }
+
+        function initBasic() {
+            var basicLayout = [
+                ['C','⌫','%','÷'],
+                ['7','8','9','×'],
+                ['4','5','6','-'],
+                ['1','2','3','+'],
+                ['±','0','.','='],
+                ['√','1/x','x²','x³']
+            ];
+            var div = document.getElementById('basicButtons');
+            if (!div) return;
+            div.innerHTML = '';
+            basicLayout.forEach(row => row.forEach(txt => {
+                if(!txt) return;
+                var btn = document.createElement('button');
+                btn.className = 'btn' + (isNaN(txt) && txt!=='.' ? ' func' : '');
+                btn.textContent = txt;
+                btn.onclick = (function(t){ return function(){ handleBasic(t); }; })(txt);
+                div.appendChild(btn);
+            }));
+            document.querySelectorAll('#basic .memory-btn').forEach(btn =>
+                btn.addEventListener('click', () => handleMemory(btn.dataset.mem, basicDisplay))
+            );
+            updateMemoryButtons();
+        }
+
+        initBasic();
+
+        // ---------- КАЛЬКУЛЯТОР ДАТ ----------
+        function initDate() {
+            var monthSelect1 = document.getElementById('month1'), monthSelect2 = document.getElementById('month2');
+            if (!monthSelect1 || !monthSelect2) return;
+            for(var i=1; i<=12; i++){ monthSelect1.add(new Option(i,i)); monthSelect2.add(new Option(i,i)); }
+            monthSelect1.value='1'; monthSelect2.value='1';
+
+            function isLeap(year){ if(year===0)return false; var absY=Math.abs(year); return(absY%4===0&&absY%100!==0)||(absY%400===0); }
+            function daysInMonth(month,year){ if(month===2)return isLeap(year)?29:28; return[4,6,9,11].indexOf(month)!==-1?30:31; }
+            function isValid(day,month,year){ if(year===0)return false; if(month<1||month>12||day<1)return false; return day<=daysInMonth(month,year); }
+            function compareDates(y1,m1,d1,y2,m2,d2){ if(y1!==y2)return y1-y2; if(m1!==m2)return m1-m2; return d1-d2; }
+            function dateToAbs(year,month,day){ var days=0; if(year>0){ for(var y=1;y<year;y++)days+=isLeap(y)?366:365; } else if(year<0){ for(var y=year;y<0;y++)days-=isLeap(y)?366:365; } for(var m=1;m<month;m++)days+=daysInMonth(m,year); return days+day-1; }
+
+            function calculateDateDiff(y1,m1,d1,y2,m2,d2){
+                var fromY=y1, fromM=m1, fromD=d1, toY=y2, toM=m2, toD=d2;
+                if(compareDates(y1,m1,d1,y2,m2,d2)>0){
+                    var tmp;
+                    tmp=fromY; fromY=toY; toY=tmp;
+                    tmp=fromM; fromM=toM; toM=tmp;
+                    tmp=fromD; fromD=toD; toD=tmp;
+                }
+                var years = toY - fromY;
+                if(toM < fromM || (toM === fromM && toD < fromD)) years--;
+                if(fromY < 0 && toY > 0) years--;
+                var months = toM >= fromM ? toM - fromM : 12 + toM - fromM;
+                if(toD < fromD){ months--; if(months < 0){ months += 12; years--; } }
+                var days;
+                if(toD >= fromD) days = toD - fromD;
+                else { var dim = daysInMonth(fromM, fromY); days = dim - fromD + toD; }
+                return { years, months, days };
+            }
+
+            function computeAndDisplay() {
+                var d1=+document.getElementById('day1').value, m1=+monthSelect1.value, y1=+document.getElementById('year1').value;
+                var d2=+document.getElementById('day2').value, m2=+monthSelect2.value, y2=+document.getElementById('year2').value;
+                if(!isValid(d1,m1,y1) || !isValid(d2,m2,y2) || y1===0 || y2===0){
+                    lastDateResult = null;
+                    const dateResult = document.getElementById('dateResult'), dateDetail = document.getElementById('dateDetail');
+                    if (dateResult) dateResult.textContent = locales[currentLang].errorInvalidDate;
+                    if (dateDetail) dateDetail.textContent = '';
+                    return;
+                }
+                var diff = calculateDateDiff(y1,m1,d1,y2,m2,d2);
+                var total = Math.abs(dateToAbs(y1,m1,d1) - dateToAbs(y2,m2,d2));
+                lastDateResult = { years: diff.years, months: diff.months, days: diff.days, total: total };
+                updateDateDisplay();
+            }
+
+            const calculateBtn = document.getElementById('calculateDate');
+            if (calculateBtn) calculateBtn.onclick = computeAndDisplay;
+            setTimeout(computeAndDisplay, 10);
+        }
+
+        initDate();
+
+        // ---------- ПОДДЕРЖКА ФИЗИЧЕСКОЙ КЛАВИАТУРЫ ----------
+        function handleKeyDown(e) {
+            const key = e.key;
+            const activeTab = document.querySelector('.tab-content.active')?.id;
+            if (!activeTab) return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (/^[0-9.]$/.test(key)) {
                 e.preventDefault();
-                if (activeTab === 'scientific') handleSci(shiftMap[key]);
+                if (activeTab === 'basic') handleBasic(key);
+                return;
+            }
+
+            const operatorMap = {
+                '+': '+', '-': '-', '*': '×', '/': '÷', 'Enter': '=',
+                'Escape': 'C', 'Backspace': '⌫'
+            };
+
+            let mapped = operatorMap[key];
+            if (!mapped && key === '=') mapped = '=';
+            if (!mapped && key === 'Enter') mapped = '=';
+
+            if (mapped) {
+                e.preventDefault();
+                if (activeTab === 'basic') {
+                    if (['+','-','×','÷','=','C','⌫'].includes(mapped)) handleBasic(mapped);
+                }
+                return;
             }
         }
-    }
 
-    document.addEventListener('keydown', handleKeyDown);
-})();
+        document.addEventListener('keydown', handleKeyDown);
+    })();
 </script>
 </body>
 </html>
